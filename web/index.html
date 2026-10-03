@@ -3,301 +3,460 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-
-<title>প্রিন্ট রিকোয়েস্ট</title>
-
-<link rel="stylesheet" href="/static/style.css">
+<title>ডকুমেন্ট প্রিন্ট রিকোয়েস্ট</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&display=swap" rel="stylesheet">
 
 <style>
-.preview-box {
-    margin-top: 20px;
-    padding: 15px;
-    border: 1px solid #ccc;
-    border-radius: 8px;
-    background: #fff;
+:root {
+    --primary: #4f46e5;
+    --primary-hover: #4338ca;
+    --bg-gradient: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+    --card-bg: #ffffff;
+    --text-main: #1f2937;
+    --text-muted: #6b7280;
+    --border-color: #e5e7eb;
 }
 
-#filePreview {
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    font-family: 'Hind Siliguri', sans-serif;
+}
+
+body {
+    background: var(--bg-gradient);
+    min-height: 100vh;
+    padding: 30px 15px;
+    color: var(--text-main);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+main {
+    background: var(--card-bg);
+    max-width: 680px;
     width: 100%;
-    height: 450px;
-    border: 1px solid #ddd;
-    margin-top: 10px;
-    object-fit: contain;
+    padding: 35px 30px;
+    border-radius: 16px;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.08);
+    transition: transform 0.3s ease;
 }
 
-#imagePreview {
-    display: none;
-    max-width: 100%;
-    max-height: 450px;
-    margin: 10px auto;
-    object-fit: contain;
+h1 {
+    font-size: 26px;
+    font-weight: 700;
+    color: #111827;
+    text-align: center;
+    margin-bottom: 6px;
 }
 
-.settings-box {
-    margin-top: 15px;
-    padding: 12px;
-    background: #eef5ff;
-    border-radius: 6px;
-    line-height: 1.8;
+.sub-title {
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 14px;
+    margin-bottom: 25px;
+}
+
+.form-group {
+    margin-bottom: 18px;
 }
 
 label {
     display: block;
-    margin-top: 15px;
+    font-weight: 600;
+    margin-bottom: 6px;
+    font-size: 14px;
 }
 
-button {
+input[type="file"],
+input[type="text"],
+input[type="number"],
+select {
+    width: 100%;
+    padding: 10px 14px;
+    border: 1.5px solid var(--border-color);
+    border-radius: 8px;
+    font-size: 14px;
+    outline: none;
+    transition: all 0.25s ease;
+    background: #fafafa;
+}
+
+input:focus, select:focus {
+    border-color: var(--primary);
+    background: #fff;
+    box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15);
+}
+
+.grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+}
+
+.check-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
     cursor: pointer;
+    margin: 15px 0;
+    font-weight: 500;
+}
+
+.check-label input {
+    width: 18px;
+    height: 18px;
+    accent-color: var(--primary);
+}
+
+/* ইন্টারেক্টিভ শিট প্রিভিউ কন্টেইনার */
+.preview-section {
+    background: #f8fafc;
+    border: 2px dashed #cbd5e1;
+    border-radius: 12px;
+    padding: 20px;
+    margin: 20px 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 280px;
+    position: relative;
+    overflow: hidden;
+}
+
+.preview-title {
+    font-size: 13px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-muted);
+    margin-bottom: 15px;
+}
+
+/* ভার্চুয়াল A4 শিট মডেল */
+.virtual-sheet {
+    background: #ffffff;
+    box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+    border: 1px solid #d1d5db;
+    border-radius: 4px;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    display: grid;
+    gap: 6px;
+    padding: 8px;
+    box-sizing: border-box;
+}
+
+/* Portrait vs Landscape সাইজিং */
+.virtual-sheet.portrait {
+    width: 170px;
+    height: 240px;
+}
+
+.virtual-sheet.landscape {
+    width: 240px;
+    height: 170px;
+}
+
+/* গ্রিড লেআউট অপশনস */
+.virtual-sheet.layout-1 {
+    grid-template-columns: 1fr;
+    grid-template-rows: 1fr;
+}
+
+.virtual-sheet.layout-4 {
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: 1fr 1fr;
+}
+
+.virtual-sheet.layout-6 {
+    grid-template-columns: 1fr 1fr 1fr;
+    grid-template-rows: 1fr 1fr;
+}
+
+/* পাতার ভেতরের মিনি পেজ বক্স */
+.mini-page {
+    background: #f1f5f9;
+    border: 1px dashed #94a3b8;
+    border-radius: 3px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 600;
+    color: #64748b;
+    overflow: hidden;
+    position: relative;
+}
+
+.mini-page img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+/* ডুপ্লেক্স ব্যাজ */
+.duplex-badge {
+    position: absolute;
+    bottom: 8px;
+    right: 8px;
+    background: #10b981;
+    color: white;
+    font-size: 10px;
+    padding: 2px 7px;
+    border-radius: 12px;
+    font-weight: 600;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    display: none;
+    animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* সেটিংস সামারি বক্স */
+.settings-box {
+    background: #f0fdf4;
+    border: 1px solid #bbf7d0;
+    border-radius: 8px;
+    padding: 12px 16px;
+    margin-bottom: 20px;
+    font-size: 13.5px;
+    color: #166534;
+}
+
+/* সাবমিট বাটন */
+button[type="submit"] {
+    width: 100%;
+    background: var(--primary);
+    color: #fff;
+    padding: 13px;
+    border: none;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: 0 4px 14px rgba(79, 70, 229, 0.35);
+    transition: all 0.25s ease;
+}
+
+button[type="submit"]:hover {
+    background: var(--primary-hover);
+    transform: translateY(-1px);
+    box-shadow: 0 6px 18px rgba(79, 70, 229, 0.45);
+}
+
+button[type="submit"]:active {
+    transform: translateY(1px);
+}
+
+#result {
+    text-align: center;
+    margin-top: 15px;
+    font-weight: 600;
+    font-size: 14px;
 }
 </style>
 </head>
 
 <body>
 <main>
+    <h1>ডকুমেন্ট প্রিন্ট রিকোয়েস্ট</h1>
+    <p class="sub-title">PDF/JPG/JPEG আপলোড করুন। অ্যাডমিন অনুমোদনের পর প্রিন্ট হবে।</p>
 
-<h1>ডকুমেন্ট প্রিন্ট রিকোয়েস্ট</h1>
+    <form id="f">
+        <div class="form-group">
+            <label>ফাইল নির্বাচন করুন</label>
+            <input type="file" name="file" id="fileInput" accept=".pdf,.jpg,.jpeg,.png" required>
+        </div>
 
-<p>
-PDF/JPG/JPEG আপলোড করুন।
-অ্যাডমিন অনুমোদনের পর প্রিন্ট হবে।
-</p>
+        <!-- লাইভ অ্যানিমেটেড লেআউট প্রিভিউ সেকশন -->
+        <div class="preview-section">
+            <span class="preview-title">লাইভ প্রিন্ট লেআউট প্রিভিউ</span>
+            <div id="virtualSheet" class="virtual-sheet portrait layout-1">
+                <!-- ডায়নামিক মিনি পেজগুলো জাভাস্ক্রিপ্ট দিয়ে তৈরি হবে -->
+                <div class="mini-page">পেজ ১</div>
+            </div>
+            <div id="duplexBadge" class="duplex-badge">Duplex (উভয় পিঠ)</div>
+        </div>
 
-<form id="f">
+        <div class="grid-2">
+            <div class="form-group">
+                <label>প্রতি শিটে পেজ</label>
+                <select name="pages" id="pages">
+                    <option value="1">Single page</option>
+                    <option value="4">4-in-1</option>
+                    <option value="6">6-in-1</option>
+                </select>
+            </div>
 
-<label>
-ফাইল
-<input
-    type="file"
-    name="file"
-    id="fileInput"
-    accept=".pdf,.jpg,.jpeg,.png"
-    required>
-</label>
+            <div class="form-group">
+                <label>দিক (Orientation)</label>
+                <select name="orientation" id="orientation">
+                    <option value="portrait">Portrait</option>
+                    <option value="landscape">Landscape</option>
+                </select>
+            </div>
+        </div>
 
-<div class="preview-box">
+        <div class="grid-2">
+            <div class="form-group">
+                <label>পেজ রেঞ্জ (ঐচ্ছিক)</label>
+                <input type="text" name="page_range" id="pageRange" placeholder="যেমন: 1-5, 8">
+            </div>
 
-<h3>ফাইল প্রিভিউ</h3>
+            <div class="form-group">
+                <label>কপি সংখ্যা</label>
+                <input type="number" name="copies" id="copies" min="1" max="100" value="1" required>
+            </div>
+        </div>
 
-<p id="previewMessage">
-প্রথমে একটি ফাইল নির্বাচন করুন।
-</p>
+        <label class="check-label">
+            <input type="checkbox" name="duplex" id="duplex" value="true">
+            Both-side / Duplex (উভয় পিঠে প্রিন্ট)
+        </label>
 
-<iframe
-    id="filePreview"
-    style="display:none">
-</iframe>
+        <div class="settings-box">
+            <strong>নির্বাচিত সেটিংস:</strong> <span id="settingsPreview"></span>
+        </div>
 
-<img
-    id="imagePreview"
-    alt="আপলোড করা ছবির প্রিভিউ">
+        <button type="submit">রিকোয়েস্ট পাঠান</button>
+    </form>
 
-</div>
-
-<label>
-প্রতি শিটে পেজ
-
-<select name="pages" id="pages">
-    <option value="1">Single page</option>
-    <option value="4">4-in-1</option>
-    <option value="6">6-in-1</option>
-</select>
-</label>
-
-<label>
-দিক
-
-<select name="orientation" id="orientation">
-    <option value="portrait">Portrait</option>
-    <option value="landscape">Landscape</option>
-</select>
-</label>
-
-<label>
-কপি
-
-<input
-    type="number"
-    name="copies"
-    id="copies"
-    min="1"
-    max="100"
-    value="1"
-    required>
-</label>
-
-<label class="check">
-<input
-    type="checkbox"
-    name="duplex"
-    id="duplex"
-    value="true">
-
-Both-side / Duplex
-</label>
-
-<div class="settings-box">
-
-<h3>আপনার নির্বাচিত প্রিন্ট সেটিংস</h3>
-
-<div id="settingsPreview"></div>
-
-</div>
-
-<button type="submit">
-রিকোয়েস্ট পাঠান
-</button>
-
-</form>
-
-<p id="result"></p>
-
+    <p id="result"></p>
 </main>
 
 <script>
 const form = document.getElementById('f');
-
 const fileInput = document.getElementById('fileInput');
-const filePreview = document.getElementById('filePreview');
-const imagePreview = document.getElementById('imagePreview');
-const previewMessage = document.getElementById('previewMessage');
-
 const pages = document.getElementById('pages');
 const orientation = document.getElementById('orientation');
 const copies = document.getElementById('copies');
 const duplex = document.getElementById('duplex');
+const pageRange = document.getElementById('pageRange');
 
+const virtualSheet = document.getElementById('virtualSheet');
+const duplexBadge = document.getElementById('duplexBadge');
 const settingsPreview = document.getElementById('settingsPreview');
 const result = document.getElementById('result');
 
-let currentObjectURL = null;
+let currentImageThumb = null;
 
-function updateSettingsPreview() {
-    const pageText = {
-        "1": "Single page",
-        "4": "4-in-1",
-        "6": "6-in-1"
-    };
+// প্রিভিউ গ্রিড এবং লেআউট রিফ্রেশ ফাংশন
+function updateLivePreview() {
+    const pageCount = parseInt(pages.value, 10);
+    const orient = orientation.value;
 
-    const directionText = {
-        "portrait": "Portrait",
-        "landscape": "Landscape"
-    };
+    // দিক পরিবর্তন
+    virtualSheet.className = `virtual-sheet ${orient} layout-${pageCount}`;
 
-    settingsPreview.textContent =
-        "প্রতি শিটে পেজ: " + pageText[pages.value] +
-        " | দিক: " + directionText[orientation.value] +
-        " | কপি: " + copies.value +
-        " | Duplex: " + (duplex.checked ? "হ্যাঁ" : "না");
-}
-
-function clearFilePreview() {
-    filePreview.style.display = "none";
-    imagePreview.style.display = "none";
-
-    filePreview.removeAttribute("src");
-    imagePreview.removeAttribute("src");
-
-    if (currentObjectURL) {
-        URL.revokeObjectURL(currentObjectURL);
-        currentObjectURL = null;
+    // পেজ গ্রিড তৈরি
+    virtualSheet.innerHTML = '';
+    for (let i = 1; i <= pageCount; i++) {
+        const mini = document.createElement('div');
+        mini.className = 'mini-page';
+        
+        if (currentImageThumb) {
+            const img = document.createElement('img');
+            img.src = currentImageThumb;
+            mini.appendChild(img);
+        } else {
+            mini.textContent = `পেজ ${i}`;
+        }
+        virtualSheet.appendChild(mini);
     }
+
+    // ডুপ্লেক্স ব্যাজ
+    duplexBadge.style.display = duplex.checked ? 'block' : 'none';
+
+    // সেটিংস বিবরণ আপডেট
+    const pText = { "1": "Single page", "4": "4-in-1", "6": "6-in-1" };
+    const dText = { "portrait": "Portrait", "landscape": "Landscape" };
+    const rangeText = pageRange.value.trim() ? ` | পেজ রেঞ্জ: ${pageRange.value.trim()}` : '';
+
+    settingsPreview.textContent = 
+        `${pText[pages.value]} | দিক: ${dText[orient]} | কপি: ${copies.value} | Duplex: ${duplex.checked ? "হ্যাঁ" : "না"}${rangeText}`;
 }
 
-fileInput.addEventListener("change", function () {
-    clearFilePreview();
-
+// ফাইল নির্বাচন ইভেন্ট
+fileInput.addEventListener('change', function () {
     const file = fileInput.files[0];
-
     if (!file) {
-        previewMessage.textContent =
-            "প্রথমে একটি ফাইল নির্বাচন করুন।";
+        currentImageThumb = null;
+        updateLivePreview();
         return;
     }
 
     const name = file.name.toLowerCase();
-    const isPDF = name.endsWith(".pdf");
-    const isImage =
-        name.endsWith(".jpg") ||
-        name.endsWith(".jpeg") ||
-        name.endsWith(".png");
-
-    currentObjectURL = URL.createObjectURL(file);
-
-    if (isPDF) {
-        filePreview.src = currentObjectURL;
-        filePreview.style.display = "block";
-
-        previewMessage.textContent =
-            "PDF ফাইলের প্রিভিউ:";
-
-    } else if (isImage) {
-        imagePreview.src = currentObjectURL;
-        imagePreview.style.display = "block";
-
-        previewMessage.textContent =
-            "ছবির প্রিভিউ:";
-
+    if (name.endsWith('.jpg') || name.endsWith('.jpeg') || name.endsWith('.png')) {
+        const reader = new FileReader();
+        reader.onload = function (e) {
+            currentImageThumb = e.target.result;
+            updateLivePreview();
+        };
+        reader.readAsDataURL(file);
     } else {
-        previewMessage.textContent =
-            "এই ফাইলের প্রিভিউ দেখানো যাচ্ছে না।";
+        currentImageThumb = null;
+        updateLivePreview();
     }
 });
 
-pages.addEventListener("change", updateSettingsPreview);
-orientation.addEventListener("change", updateSettingsPreview);
-copies.addEventListener("input", updateSettingsPreview);
-duplex.addEventListener("change", updateSettingsPreview);
+pages.addEventListener('change', updateLivePreview);
+orientation.addEventListener('change', updateLivePreview);
+copies.addEventListener('input', updateLivePreview);
+duplex.addEventListener('change', updateLivePreview);
+pageRange.addEventListener('input', updateLivePreview);
 
-form.addEventListener("submit", async function (e) {
+// ফর্ম সাবমিট
+form.addEventListener('submit', async function (e) {
     e.preventDefault();
 
     const file = fileInput.files[0];
-
     if (!file) {
-        result.textContent = "আগে একটি ফাইল নির্বাচন করুন।";
+        result.style.color = '#dc2626';
+        result.textContent = 'দয়া করে একটি ফাইল নির্বাচন করুন।';
         return;
     }
 
     const data = new FormData(form);
+    data.set('duplex', duplex.checked ? 'true' : 'false');
 
-    data.set("duplex", duplex.checked ? "true" : "false");
-
-    result.textContent = "আপলোড হচ্ছে...";
+    result.style.color = '#4f46e5';
+    result.textContent = 'আপলোড ও রিকোয়েস্ট প্রসেস হচ্ছে...';
 
     try {
-        const response = await fetch("/api/requests", {
-            method: "POST",
+        const response = await fetch('/api/requests', {
+            method: 'POST',
             body: data
         });
 
         const json = await response.json();
-
         if (!response.ok) {
-            throw new Error(
-                json.detail || "রিকোয়েস্ট পাঠানো যায়নি।"
-            );
+            throw new Error(json.detail || 'রিকোয়েস্ট পাঠানো যায়নি।');
         }
 
-        result.textContent =
-            `রিকোয়েস্ট #${json.id} জমা হয়েছে। ` +
-            `স্ট্যাটাস: ${json.status}`;
+        result.style.color = '#16a34a';
+        result.textContent = `সফল হয়েছে! রিকোয়েস্ট #${json.id} জমা হয়েছে। (স্ট্যাটাস: ${json.status})`;
 
         form.reset();
-        clearFilePreview();
-
-        previewMessage.textContent =
-            "প্রথমে একটি ফাইল নির্বাচন করুন।";
-
-        updateSettingsPreview();
-
-    } catch (error) {
-        result.textContent =
-            "সমস্যা: " + error.message;
+        currentImageThumb = null;
+        updateLivePreview();
+    } catch (err) {
+        result.style.color = '#dc2626';
+        result.textContent = 'সমস্যা: ' + err.message;
     }
 });
 
-updateSettingsPreview();
+// ইনিশিয়াল কল
+updateLivePreview();
 </script>
-
 </body>
 </html>
