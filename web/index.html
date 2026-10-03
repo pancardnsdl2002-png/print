@@ -8,6 +8,9 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&display=swap" rel="stylesheet">
 
+<!-- PDF.js লাইব্রেরি যুক্ত করা হয়েছে -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+
 <style>
 :root {
     --primary: #4f46e5;
@@ -43,7 +46,6 @@ main {
     padding: 35px 30px;
     border-radius: 16px;
     box-shadow: 0 20px 40px rgba(0, 0, 0, 0.08);
-    transition: transform 0.3s ease;
 }
 
 h1 {
@@ -113,7 +115,7 @@ input:focus, select:focus {
     accent-color: var(--primary);
 }
 
-/* ইন্টারেক্টিভ শিট প্রিভিউ কন্টেইনার */
+/* লাইভ প্রিভিউ কন্টেইনার */
 .preview-section {
     background: #f8fafc;
     border: 2px dashed #cbd5e1;
@@ -124,9 +126,8 @@ input:focus, select:focus {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    min-height: 280px;
+    min-height: 320px;
     position: relative;
-    overflow: hidden;
 }
 
 .preview-title {
@@ -138,32 +139,31 @@ input:focus, select:focus {
     margin-bottom: 15px;
 }
 
-/* ভার্চুয়াল A4 শিট মডেল */
+/* ভার্চুয়াল A4 শিট */
 .virtual-sheet {
     background: #ffffff;
     box-shadow: 0 8px 25px rgba(0,0,0,0.15);
-    border: 1px solid #d1d5db;
-    border-radius: 4px;
-    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-    position: relative;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    transition: width 0.35s ease, height 0.35s ease, transform 0.3s ease;
     display: grid;
     gap: 6px;
     padding: 8px;
     box-sizing: border-box;
 }
 
-/* Portrait vs Landscape সাইজিং */
+/* Portrait ও Landscape সাইজিং */
 .virtual-sheet.portrait {
-    width: 170px;
-    height: 240px;
+    width: 190px;
+    height: 270px;
 }
 
 .virtual-sheet.landscape {
-    width: 240px;
-    height: 170px;
+    width: 270px;
+    height: 190px;
 }
 
-/* গ্রিড লেআউট অপশনস */
+/* গ্রিড লেআউট */
 .virtual-sheet.layout-1 {
     grid-template-columns: 1fr;
     grid-template-rows: 1fr;
@@ -183,7 +183,7 @@ input:focus, select:focus {
 .mini-page {
     background: #f1f5f9;
     border: 1px dashed #94a3b8;
-    border-radius: 3px;
+    border-radius: 4px;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -195,31 +195,36 @@ input:focus, select:focus {
     position: relative;
 }
 
+.mini-page canvas,
 .mini-page img {
     width: 100%;
     height: 100%;
-    object-fit: cover;
+    object-fit: contain;
+    background: #fff;
+}
+
+.mini-page-label {
+    position: absolute;
+    bottom: 2px;
+    right: 4px;
+    font-size: 9px;
+    background: rgba(0,0,0,0.6);
+    color: #fff;
+    padding: 1px 4px;
+    border-radius: 3px;
 }
 
 /* ডুপ্লেক্স ব্যাজ */
 .duplex-badge {
-    position: absolute;
-    bottom: 8px;
-    right: 8px;
+    margin-top: 12px;
     background: #10b981;
     color: white;
-    font-size: 10px;
-    padding: 2px 7px;
+    font-size: 11px;
+    padding: 3px 10px;
     border-radius: 12px;
     font-weight: 600;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
     display: none;
-    animation: fadeIn 0.3s ease;
-}
-
-@keyframes fadeIn {
-    from { opacity: 0; transform: translateY(4px); }
-    to { opacity: 1; transform: translateY(0); }
+    box-shadow: 0 2px 5px rgba(0,0,0,0.15);
 }
 
 /* সেটিংস সামারি বক্স */
@@ -233,7 +238,6 @@ input:focus, select:focus {
     color: #166534;
 }
 
-/* সাবমিট বাটন */
 button[type="submit"] {
     width: 100%;
     background: var(--primary);
@@ -250,12 +254,6 @@ button[type="submit"] {
 
 button[type="submit"]:hover {
     background: var(--primary-hover);
-    transform: translateY(-1px);
-    box-shadow: 0 6px 18px rgba(79, 70, 229, 0.45);
-}
-
-button[type="submit"]:active {
-    transform: translateY(1px);
 }
 
 #result {
@@ -278,14 +276,11 @@ button[type="submit"]:active {
             <input type="file" name="file" id="fileInput" accept=".pdf,.jpg,.jpeg,.png" required>
         </div>
 
-        <!-- লাইভ অ্যানিমেটেড লেআউট প্রিভিউ সেকশন -->
+        <!-- লাইভ অ্যানিমেটেড প্রিভিউ -->
         <div class="preview-section">
             <span class="preview-title">লাইভ প্রিন্ট লেআউট প্রিভিউ</span>
-            <div id="virtualSheet" class="virtual-sheet portrait layout-1">
-                <!-- ডায়নামিক মিনি পেজগুলো জাভাস্ক্রিপ্ট দিয়ে তৈরি হবে -->
-                <div class="mini-page">পেজ ১</div>
-            </div>
-            <div id="duplexBadge" class="duplex-badge">Duplex (উভয় পিঠ)</div>
+            <div id="virtualSheet" class="virtual-sheet portrait layout-1"></div>
+            <div id="duplexBadge" class="duplex-badge">✓ Duplex (উভয় পিঠ অন)</div>
         </div>
 
         <div class="grid-2">
@@ -335,6 +330,11 @@ button[type="submit"]:active {
 </main>
 
 <script>
+// PDF.js worker কনফিগারেশন
+if (window.pdfjsLib) {
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+}
+
 const form = document.getElementById('f');
 const fileInput = document.getElementById('fileInput');
 const pages = document.getElementById('pages');
@@ -348,36 +348,102 @@ const duplexBadge = document.getElementById('duplexBadge');
 const settingsPreview = document.getElementById('settingsPreview');
 const result = document.getElementById('result');
 
+let loadedPdfDoc = null;
 let currentImageThumb = null;
 
-// প্রিভিউ গ্রিড এবং লেআউট রিফ্রেশ ফাংশন
-function updateLivePreview() {
+// পেজ রেঞ্জ পার্স করার ফাংশন (যেমন "1-4, 6" => [1,2,3,4,6])
+function parsePageRange(rangeStr, maxPages) {
+    if (!rangeStr || !rangeStr.trim()) {
+        const arr = [];
+        for (let i = 1; i <= maxPages; i++) arr.push(i);
+        return arr;
+    }
+    const pagesList = [];
+    const parts = rangeStr.split(',');
+    for (const part of parts) {
+        const clean = part.trim();
+        if (clean.includes('-')) {
+            const [start, end] = clean.split('-').map(Number);
+            if (!isNaN(start) && !isNaN(end)) {
+                for (let i = start; i <= end; i++) {
+                    if (i >= 1 && i <= maxPages && !pagesList.includes(i)) {
+                        pagesList.push(i);
+                    }
+                }
+            }
+        } else {
+            const p = Number(clean);
+            if (!isNaN(p) && p >= 1 && p <= maxPages && !pagesList.includes(p)) {
+                pagesList.push(p);
+            }
+        }
+    }
+    return pagesList.length > 0 ? pagesList : [1];
+}
+
+// পিডিএফ পেজ ক্যানভাসে রেন্ডার করার হেল্পার
+async function renderPdfPageToCanvas(pdfDoc, pageNum, canvas) {
+    try {
+        const page = await pdfDoc.getPage(pageNum);
+        const viewport = page.getViewport({ scale: 0.5 });
+        canvas.width = viewport.width;
+        canvas.height = viewport.height;
+        const ctx = canvas.getContext('2d');
+        await page.render({ canvasContext: ctx, viewport: viewport }).promise;
+    } catch (err) {
+        console.error("PDF রেন্ডার সমস্যা:", err);
+    }
+}
+
+// পুরো প্রিভিউ রিফ্রেশ লজিক
+async function updateLivePreview() {
     const pageCount = parseInt(pages.value, 10);
     const orient = orientation.value;
 
-    // দিক পরিবর্তন
+    // শিটের আকার ও গ্রিড ক্লাস আপডেট
     virtualSheet.className = `virtual-sheet ${orient} layout-${pageCount}`;
-
-    // পেজ গ্রিড তৈরি
     virtualSheet.innerHTML = '';
+
+    let pagesToRender = [];
+    if (loadedPdfDoc) {
+        const total = loadedPdfDoc.numPages;
+        const selected = parsePageRange(pageRange.value, total);
+        pagesToRender = selected.slice(0, pageCount);
+    }
+
     for (let i = 1; i <= pageCount; i++) {
         const mini = document.createElement('div');
         mini.className = 'mini-page';
-        
-        if (currentImageThumb) {
+
+        if (loadedPdfDoc) {
+            const pageNum = pagesToRender[i - 1];
+            if (pageNum) {
+                const canvas = document.createElement('canvas');
+                mini.appendChild(canvas);
+                renderPdfPageToCanvas(loadedPdfDoc, pageNum, canvas);
+
+                const badge = document.createElement('span');
+                badge.className = 'mini-page-label';
+                badge.textContent = `P ${pageNum}`;
+                mini.appendChild(badge);
+            } else {
+                mini.textContent = `খালি (${i})`;
+            }
+        } else if (currentImageThumb) {
             const img = document.createElement('img');
             img.src = currentImageThumb;
             mini.appendChild(img);
         } else {
             mini.textContent = `পেজ ${i}`;
         }
+
         virtualSheet.appendChild(mini);
     }
 
     // ডুপ্লেক্স ব্যাজ
     duplexBadge.style.display = duplex.checked ? 'block' : 'none';
 
-    // সেটিংস বিবরণ আপডেট
+    // সেটিংস প্রিভিউ টেক্সট
     const pText = { "1": "Single page", "4": "4-in-1", "6": "6-in-1" };
     const dText = { "portrait": "Portrait", "landscape": "Landscape" };
     const rangeText = pageRange.value.trim() ? ` | পেজ রেঞ্জ: ${pageRange.value.trim()}` : '';
@@ -386,17 +452,33 @@ function updateLivePreview() {
         `${pText[pages.value]} | দিক: ${dText[orient]} | কপি: ${copies.value} | Duplex: ${duplex.checked ? "হ্যাঁ" : "না"}${rangeText}`;
 }
 
-// ফাইল নির্বাচন ইভেন্ট
-fileInput.addEventListener('change', function () {
+// ফাইল আপলোড ইভেন্ট
+fileInput.addEventListener('change', async function () {
     const file = fileInput.files[0];
+    loadedPdfDoc = null;
+    currentImageThumb = null;
+
     if (!file) {
-        currentImageThumb = null;
         updateLivePreview();
         return;
     }
 
     const name = file.name.toLowerCase();
-    if (name.endsWith('.jpg') || name.endsWith('.jpeg') || name.endsWith('.png')) {
+
+    if (name.endsWith('.pdf')) {
+        const fileReader = new FileReader();
+        fileReader.onload = async function () {
+            const typedarray = new Uint8Array(this.result);
+            try {
+                loadedPdfDoc = await pdfjsLib.getDocument(typedarray).promise;
+                updateLivePreview();
+            } catch (e) {
+                console.error("পিডিএফ পড়তে সমস্যা হয়েছে:", e);
+                updateLivePreview();
+            }
+        };
+        fileReader.readAsArrayBuffer(file);
+    } else if (name.endsWith('.jpg') || name.endsWith('.jpeg') || name.endsWith('.png')) {
         const reader = new FileReader();
         reader.onload = function (e) {
             currentImageThumb = e.target.result;
@@ -404,7 +486,6 @@ fileInput.addEventListener('change', function () {
         };
         reader.readAsDataURL(file);
     } else {
-        currentImageThumb = null;
         updateLivePreview();
     }
 });
@@ -415,7 +496,7 @@ copies.addEventListener('input', updateLivePreview);
 duplex.addEventListener('change', updateLivePreview);
 pageRange.addEventListener('input', updateLivePreview);
 
-// ফর্ম সাবমিট
+// ফর্ম সাবমিট হ্যান্ডলার
 form.addEventListener('submit', async function (e) {
     e.preventDefault();
 
@@ -447,6 +528,7 @@ form.addEventListener('submit', async function (e) {
         result.textContent = `সফল হয়েছে! রিকোয়েস্ট #${json.id} জমা হয়েছে। (স্ট্যাটাস: ${json.status})`;
 
         form.reset();
+        loadedPdfDoc = null;
         currentImageThumb = null;
         updateLivePreview();
     } catch (err) {
@@ -455,7 +537,7 @@ form.addEventListener('submit', async function (e) {
     }
 });
 
-// ইনিশিয়াল কল
+// শুরুর ইনিশিয়ালাইজেশন
 updateLivePreview();
 </script>
 </body>
