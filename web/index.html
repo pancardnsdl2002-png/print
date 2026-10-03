@@ -1,0 +1,303 @@
+<!doctype html>
+<html lang="bn">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<title>প্রিন্ট রিকোয়েস্ট</title>
+
+<link rel="stylesheet" href="/static/style.css">
+
+<style>
+.preview-box {
+    margin-top: 20px;
+    padding: 15px;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    background: #fff;
+}
+
+#filePreview {
+    width: 100%;
+    height: 450px;
+    border: 1px solid #ddd;
+    margin-top: 10px;
+    object-fit: contain;
+}
+
+#imagePreview {
+    display: none;
+    max-width: 100%;
+    max-height: 450px;
+    margin: 10px auto;
+    object-fit: contain;
+}
+
+.settings-box {
+    margin-top: 15px;
+    padding: 12px;
+    background: #eef5ff;
+    border-radius: 6px;
+    line-height: 1.8;
+}
+
+label {
+    display: block;
+    margin-top: 15px;
+}
+
+button {
+    cursor: pointer;
+}
+</style>
+</head>
+
+<body>
+<main>
+
+<h1>ডকুমেন্ট প্রিন্ট রিকোয়েস্ট</h1>
+
+<p>
+PDF/JPG/JPEG আপলোড করুন।
+অ্যাডমিন অনুমোদনের পর প্রিন্ট হবে।
+</p>
+
+<form id="f">
+
+<label>
+ফাইল
+<input
+    type="file"
+    name="file"
+    id="fileInput"
+    accept=".pdf,.jpg,.jpeg,.png"
+    required>
+</label>
+
+<div class="preview-box">
+
+<h3>ফাইল প্রিভিউ</h3>
+
+<p id="previewMessage">
+প্রথমে একটি ফাইল নির্বাচন করুন।
+</p>
+
+<iframe
+    id="filePreview"
+    style="display:none">
+</iframe>
+
+<img
+    id="imagePreview"
+    alt="আপলোড করা ছবির প্রিভিউ">
+
+</div>
+
+<label>
+প্রতি শিটে পেজ
+
+<select name="pages" id="pages">
+    <option value="1">Single page</option>
+    <option value="4">4-in-1</option>
+    <option value="6">6-in-1</option>
+</select>
+</label>
+
+<label>
+দিক
+
+<select name="orientation" id="orientation">
+    <option value="portrait">Portrait</option>
+    <option value="landscape">Landscape</option>
+</select>
+</label>
+
+<label>
+কপি
+
+<input
+    type="number"
+    name="copies"
+    id="copies"
+    min="1"
+    max="100"
+    value="1"
+    required>
+</label>
+
+<label class="check">
+<input
+    type="checkbox"
+    name="duplex"
+    id="duplex"
+    value="true">
+
+Both-side / Duplex
+</label>
+
+<div class="settings-box">
+
+<h3>আপনার নির্বাচিত প্রিন্ট সেটিংস</h3>
+
+<div id="settingsPreview"></div>
+
+</div>
+
+<button type="submit">
+রিকোয়েস্ট পাঠান
+</button>
+
+</form>
+
+<p id="result"></p>
+
+</main>
+
+<script>
+const form = document.getElementById('f');
+
+const fileInput = document.getElementById('fileInput');
+const filePreview = document.getElementById('filePreview');
+const imagePreview = document.getElementById('imagePreview');
+const previewMessage = document.getElementById('previewMessage');
+
+const pages = document.getElementById('pages');
+const orientation = document.getElementById('orientation');
+const copies = document.getElementById('copies');
+const duplex = document.getElementById('duplex');
+
+const settingsPreview = document.getElementById('settingsPreview');
+const result = document.getElementById('result');
+
+let currentObjectURL = null;
+
+function updateSettingsPreview() {
+    const pageText = {
+        "1": "Single page",
+        "4": "4-in-1",
+        "6": "6-in-1"
+    };
+
+    const directionText = {
+        "portrait": "Portrait",
+        "landscape": "Landscape"
+    };
+
+    settingsPreview.textContent =
+        "প্রতি শিটে পেজ: " + pageText[pages.value] +
+        " | দিক: " + directionText[orientation.value] +
+        " | কপি: " + copies.value +
+        " | Duplex: " + (duplex.checked ? "হ্যাঁ" : "না");
+}
+
+function clearFilePreview() {
+    filePreview.style.display = "none";
+    imagePreview.style.display = "none";
+
+    filePreview.removeAttribute("src");
+    imagePreview.removeAttribute("src");
+
+    if (currentObjectURL) {
+        URL.revokeObjectURL(currentObjectURL);
+        currentObjectURL = null;
+    }
+}
+
+fileInput.addEventListener("change", function () {
+    clearFilePreview();
+
+    const file = fileInput.files[0];
+
+    if (!file) {
+        previewMessage.textContent =
+            "প্রথমে একটি ফাইল নির্বাচন করুন।";
+        return;
+    }
+
+    const name = file.name.toLowerCase();
+    const isPDF = name.endsWith(".pdf");
+    const isImage =
+        name.endsWith(".jpg") ||
+        name.endsWith(".jpeg") ||
+        name.endsWith(".png");
+
+    currentObjectURL = URL.createObjectURL(file);
+
+    if (isPDF) {
+        filePreview.src = currentObjectURL;
+        filePreview.style.display = "block";
+
+        previewMessage.textContent =
+            "PDF ফাইলের প্রিভিউ:";
+
+    } else if (isImage) {
+        imagePreview.src = currentObjectURL;
+        imagePreview.style.display = "block";
+
+        previewMessage.textContent =
+            "ছবির প্রিভিউ:";
+
+    } else {
+        previewMessage.textContent =
+            "এই ফাইলের প্রিভিউ দেখানো যাচ্ছে না।";
+    }
+});
+
+pages.addEventListener("change", updateSettingsPreview);
+orientation.addEventListener("change", updateSettingsPreview);
+copies.addEventListener("input", updateSettingsPreview);
+duplex.addEventListener("change", updateSettingsPreview);
+
+form.addEventListener("submit", async function (e) {
+    e.preventDefault();
+
+    const file = fileInput.files[0];
+
+    if (!file) {
+        result.textContent = "আগে একটি ফাইল নির্বাচন করুন।";
+        return;
+    }
+
+    const data = new FormData(form);
+
+    data.set("duplex", duplex.checked ? "true" : "false");
+
+    result.textContent = "আপলোড হচ্ছে...";
+
+    try {
+        const response = await fetch("/api/requests", {
+            method: "POST",
+            body: data
+        });
+
+        const json = await response.json();
+
+        if (!response.ok) {
+            throw new Error(
+                json.detail || "রিকোয়েস্ট পাঠানো যায়নি।"
+            );
+        }
+
+        result.textContent =
+            `রিকোয়েস্ট #${json.id} জমা হয়েছে। ` +
+            `স্ট্যাটাস: ${json.status}`;
+
+        form.reset();
+        clearFilePreview();
+
+        previewMessage.textContent =
+            "প্রথমে একটি ফাইল নির্বাচন করুন।";
+
+        updateSettingsPreview();
+
+    } catch (error) {
+        result.textContent =
+            "সমস্যা: " + error.message;
+    }
+});
+
+updateSettingsPreview();
+</script>
+
+</body>
+</html>
