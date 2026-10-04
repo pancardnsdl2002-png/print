@@ -162,6 +162,6 @@ def validate_settings(
 ):
 
     if pages not in (1, 4, 6):
-        raise HTTPException(
+        raise HTTPException()
             status_code=400,
             detail="Pages per sheet must be 1"
