@@ -28,7 +28,6 @@ WEB = Path(__file__).resolve().parent.parent / "web"
 UPLOADS.mkdir(parents=True, exist_ok=True)
 DB.parent.mkdir(parents=True, exist_ok=True)
 
-
 if WEB.exists():
     app.mount(
         "/static",
@@ -59,7 +58,6 @@ def column_exists(connection, table_name, column_name):
 
 
 def init_database():
-
     with connect() as connection:
 
         connection.execute(
@@ -91,10 +89,7 @@ def init_database():
             """
         )
 
-        # -------------------------------------------------
-        # Migration for existing database
-        # -------------------------------------------------
-
+        # Add page_range to an old database if missing
         if not column_exists(
             connection,
             "jobs",
@@ -107,6 +102,7 @@ def init_database():
                 """
             )
 
+        # Add color_mode to an old database if missing
         if not column_exists(
             connection,
             "jobs",
@@ -130,7 +126,6 @@ init_database()
 # =========================================================
 
 def auth(token: str):
-
     if not token or token != TOKEN:
         raise HTTPException(
             status_code=401,
@@ -139,7 +134,6 @@ def auth(token: str):
 
 
 def clean(stored_name):
-
     if not stored_name:
         return
 
@@ -158,10 +152,4 @@ def validate_settings(
     duplex,
     orientation,
     copies,
-    color_mode,
-):
-
-    if pages not in (1, 4, 6):
-        raise HTTPException(
-            status_code=400,
-            detail="Pages per sheet must be 1,4 or 6")
+   
