@@ -1,6 +1,997 @@
-<!doctype html><html lang="bn"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>অ্যাডমিন</title><link rel="stylesheet" href="/static/style.css"></head><body><main><h1>অ্যাডমিন প্যানেল</h1><p>Admin token দিন।</p><input id="token" type="password" placeholder="Admin token"><button id="load">রিকোয়েস্ট দেখুন</button><p id="msg"></p><div id="list"></div></main><script>
-const token=()=>document.getElementById('token').value, msg=document.getElementById('msg'), list=document.getElementById('list');
-async function load(){try{let r=await fetch('/api/admin/requests',{headers:{'X-Admin-Token':token()}}),data=await r.json();if(!r.ok)throw Error(data.detail);list.innerHTML='';data.forEach(j=>{let d=document.createElement('section');d.className='job';let h=document.createElement('h3');h.textContent=`#${j.id} ${j.original_name} — ${j.status}`;d.append(h);let p=document.createElement('p');p.textContent=`Pages/sheet ${j.pages}; ${j.orientation}; duplex ${!!j.duplex}; copies ${j.copies}`;d.append(p);if(j.status==='pending'){let a=document.createElement('button');a.textContent='Approve';a.onclick=()=>action(j.id,'approve');let b=document.createElement('button');b.textContent='Reject';b.onclick=()=>action(j.id,'reject');d.append(a,b)}list.append(d)});msg.textContent=`${data.length}টি রিকোয়েস্ট`;}catch(e){msg.textContent='সমস্যা: '+e.message}}
-async function action(id,what){let opts={method:'POST',headers:{'X-Admin-Token':token()}};if(what==='reject'){let f=new FormData();f.set('reason',prompt('কারণ?')||'Rejected');opts.body=f}let r=await fetch(`/api/admin/requests/${id}/${what}`,opts),j=await r.json();if(!r.ok){msg.textContent=j.detail;return}load()}
-document.getElementById('load').onclick=load;
-</script></body></html>
+<!doctype html>
+<html lang="bn">
+
+<head>
+
+    <meta charset="utf-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width,initial-scale=1"
+    >
+
+    <title>অ্যাডমিন প্যানেল</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+
+    <link rel="preconnect"
+          href="https://fonts.gstatic.com"
+          crossorigin>
+
+    <link
+        href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&display=swap"
+        rel="stylesheet"
+    >
+
+    <link
+        rel="stylesheet"
+        href="/static/style.css"
+    >
+
+</head>
+
+
+<body>
+
+<div class="page-background">
+
+    <main class="admin-card">
+
+
+        <!-- HEADER -->
+
+        <header class="admin-header">
+
+            <div class="admin-title-wrap">
+
+                <div class="admin-icon">
+                    🖨️
+                </div>
+
+                <div>
+
+                    <h1>
+                        অ্যাডমিন প্যানেল
+                    </h1>
+
+                    <p>
+                        প্রিন্ট রিকোয়েস্ট পরিচালনা করুন
+                    </p>
+
+                </div>
+
+            </div>
+
+            <div
+                id="connectionBadge"
+                class="connection-badge"
+            >
+                ● প্রস্তুত
+            </div>
+
+        </header>
+
+
+        <!-- TOKEN -->
+
+        <section class="admin-login-box">
+
+            <div class="section-title">
+
+                <span>🔐</span>
+
+                <span>
+                    Admin Authentication
+                </span>
+
+            </div>
+
+
+            <div class="token-row">
+
+                <input
+                    id="token"
+                    type="password"
+                    placeholder="Admin token দিন"
+                    autocomplete="off"
+                >
+
+                <button
+                    id="load"
+                    class="primary-button"
+                >
+                    রিকোয়েস্ট দেখুন
+                </button>
+
+            </div>
+
+        </section>
+
+
+        <!-- TOOLBAR -->
+
+        <div class="admin-toolbar">
+
+            <div>
+
+                <strong>
+                    রিকোয়েস্টসমূহ
+                </strong>
+
+                <span
+                    id="count"
+                    class="count-badge"
+                >
+                    0
+                </span>
+
+            </div>
+
+
+            <button
+                id="refresh"
+                class="secondary-button"
+            >
+                ↻ Refresh
+            </button>
+
+        </div>
+
+
+        <!-- MESSAGE -->
+
+        <div
+            id="msg"
+            class="admin-message"
+        >
+        </div>
+
+
+        <!-- LIST -->
+
+        <div
+            id="list"
+            class="job-list"
+        >
+
+            <div class="empty-state">
+
+                <div class="empty-icon">
+                    📋
+                </div>
+
+                <h3>
+                    কোনো রিকোয়েস্ট লোড করা হয়নি
+                </h3>
+
+                <p>
+                    Admin token দিয়ে
+                    “রিকোয়েস্ট দেখুন” চাপুন।
+                </p>
+
+            </div>
+
+        </div>
+
+
+        <!-- FOOTER -->
+
+        <footer class="page-footer">
+
+            <span>
+                🔒 Admin access protected
+            </span>
+
+        </footer>
+
+
+    </main>
+
+</div>
+
+
+<script>
+
+
+const tokenInput =
+    document.getElementById('token');
+
+
+const loadButton =
+    document.getElementById('load');
+
+
+const refreshButton =
+    document.getElementById('refresh');
+
+
+const msg =
+    document.getElementById('msg');
+
+
+const list =
+    document.getElementById('list');
+
+
+const count =
+    document.getElementById('count');
+
+
+const connectionBadge =
+    document.getElementById(
+        'connectionBadge'
+    );
+
+
+function token() {
+
+    return tokenInput.value.trim();
+
+}
+
+
+/* -------------------------------------------------
+   MESSAGE
+------------------------------------------------- */
+
+function showMessage(
+    text,
+    type = ''
+) {
+
+    msg.className =
+        'admin-message ' + type;
+
+    msg.textContent =
+        text;
+
+}
+
+
+/* -------------------------------------------------
+   STATUS
+------------------------------------------------- */
+
+function statusClass(status) {
+
+    if (status === 'pending') {
+        return 'status-pending';
+    }
+
+    if (status === 'approved') {
+        return 'status-approved';
+    }
+
+    if (status === 'rejected') {
+        return 'status-rejected';
+    }
+
+    if (status === 'completed') {
+        return 'status-completed';
+    }
+
+    return 'status-other';
+
+}
+
+
+function statusText(status) {
+
+    const map = {
+
+        pending: 'Pending',
+
+        approved: 'Approved',
+
+        rejected: 'Rejected',
+
+        completed: 'Completed'
+
+    };
+
+    return map[status] || status;
+
+}
+
+
+/* -------------------------------------------------
+   LOAD
+------------------------------------------------- */
+
+async function load() {
+
+    if (!token()) {
+
+        showMessage(
+            'দয়া করে Admin token দিন।',
+            'error'
+        );
+
+        return;
+
+    }
+
+
+    loadButton.disabled = true;
+
+    refreshButton.disabled = true;
+
+
+    connectionBadge.textContent =
+        '● Loading...';
+
+
+    connectionBadge.className =
+        'connection-badge loading';
+
+
+    showMessage(
+        'রিকোয়েস্ট লোড হচ্ছে...',
+        'loading'
+    );
+
+
+    try {
+
+        const response =
+            await fetch(
+                '/api/admin/requests',
+                {
+                    headers: {
+                        'X-Admin-Token':
+                            token()
+                    }
+                }
+            );
+
+
+        const data =
+            await response.json();
+
+
+        if (!response.ok) {
+
+            throw new Error(
+                data.detail ||
+                'রিকোয়েস্ট লোড করা যায়নি।'
+            );
+
+        }
+
+
+        renderJobs(data);
+
+
+        count.textContent =
+            data.length;
+
+
+        connectionBadge.textContent =
+            '● Connected';
+
+
+        connectionBadge.className =
+            'connection-badge connected';
+
+
+        showMessage(
+            `${data.length}টি রিকোয়েস্ট পাওয়া গেছে।`,
+            'success'
+        );
+
+
+    } catch (error) {
+
+        connectionBadge.textContent =
+            '● Error';
+
+
+        connectionBadge.className =
+            'connection-badge error';
+
+
+        showMessage(
+            'সমস্যা: ' +
+            error.message,
+            'error'
+        );
+
+    }
+
+
+    loadButton.disabled = false;
+
+    refreshButton.disabled = false;
+
+}
+
+
+/* -------------------------------------------------
+   RENDER JOBS
+------------------------------------------------- */
+
+function renderJobs(data) {
+
+    list.innerHTML = '';
+
+
+    if (!data || data.length === 0) {
+
+        list.innerHTML = `
+
+            <div class="empty-state">
+
+                <div class="empty-icon">
+                    🎉
+                </div>
+
+                <h3>
+                    কোনো রিকোয়েস্ট নেই
+                </h3>
+
+                <p>
+                    নতুন customer request এলে
+                    এখানে দেখা যাবে।
+                </p>
+
+            </div>
+
+        `;
+
+        return;
+
+    }
+
+
+    data.forEach(
+        job => {
+
+            const card =
+                document.createElement(
+                    'section'
+                );
+
+
+            card.className =
+                'job-card';
+
+
+            /* HEADER */
+
+            const header =
+                document.createElement(
+                    'div'
+                );
+
+
+            header.className =
+                'job-card-header';
+
+
+            const title =
+                document.createElement(
+                    'div'
+                );
+
+
+            title.className =
+                'job-title';
+
+
+            title.innerHTML =
+                `<span class="job-number">
+                    #${job.id}
+                </span>
+                <span>
+                    ${escapeHtml(
+                        job.original_name ||
+                        'Document'
+                    )}
+                </span>`;
+
+
+            const badge =
+                document.createElement(
+                    'span'
+                );
+
+
+            badge.className =
+                `status-badge ${
+                    statusClass(job.status)
+                }`;
+
+
+            badge.textContent =
+                statusText(job.status);
+
+
+            header.appendChild(title);
+
+            header.appendChild(badge);
+
+
+            card.appendChild(header);
+
+
+            /* DETAILS */
+
+            const details =
+                document.createElement(
+                    'div'
+                );
+
+
+            details.className =
+                'job-details';
+
+
+            addDetail(
+                details,
+                '📄',
+                'Pages/sheet',
+                job.pages
+            );
+
+
+            addDetail(
+                details,
+                '↕️',
+                'Orientation',
+                job.orientation
+            );
+
+
+            addDetail(
+                details,
+                '📑',
+                'Page range',
+                job.page_range || 'All'
+            );
+
+
+            addDetail(
+                details,
+                '🔢',
+                'Copies',
+                job.copies
+            );
+
+
+            addDetail(
+                details,
+                '🎨',
+                'Color',
+                job.color_mode || 'color'
+            );
+
+
+            addDetail(
+                details,
+                '↔️',
+                'Duplex',
+                job.duplex
+                    ? 'হ্যাঁ'
+                    : 'না'
+            );
+
+
+            card.appendChild(details);
+
+
+            /* ACTIONS */
+
+            const actions =
+                document.createElement(
+                    'div'
+                );
+
+
+            actions.className =
+                'job-actions';
+
+
+            if (
+                job.status ===
+                'pending'
+            ) {
+
+                const approve =
+                    createButton(
+                        '✓ Approve',
+                        'approve-button'
+                    );
+
+
+                approve.onclick =
+                    () =>
+                        action(
+                            job.id,
+                            'approve'
+                        );
+
+
+                const reject =
+                    createButton(
+                        '✕ Reject',
+                        'reject-button'
+                    );
+
+
+                reject.onclick =
+                    () =>
+                        action(
+                            job.id,
+                            'reject'
+                        );
+
+
+                actions.appendChild(
+                    approve
+                );
+
+
+                actions.appendChild(
+                    reject
+                );
+
+            }
+
+            else if (
+                job.status ===
+                'approved'
+            ) {
+
+                const approvedText =
+                    document.createElement(
+                        'div'
+                    );
+
+
+                approvedText.className =
+                    'approved-info';
+
+
+                approvedText.innerHTML =
+                    '✓ Approved — Desktop Admin App থেকে print করা যাবে।';
+
+
+                actions.appendChild(
+                    approvedText
+                );
+
+
+                const reject =
+                    createButton(
+                        '✕ Reject',
+                        'reject-button'
+                    );
+
+
+                reject.onclick =
+                    () =>
+                        action(
+                            job.id,
+                            'reject'
+                        );
+
+
+                actions.appendChild(
+                    reject
+                );
+
+            }
+
+            else if (
+                job.status ===
+                'rejected'
+            ) {
+
+                const rejectedText =
+                    document.createElement(
+                        'div'
+                    );
+
+
+                rejectedText.className =
+                    'rejected-info';
+
+
+                rejectedText.textContent =
+                    'এই রিকোয়েস্টটি Reject করা হয়েছে।';
+
+
+                actions.appendChild(
+                    rejectedText
+                );
+
+            }
+
+
+            card.appendChild(actions);
+
+
+            list.appendChild(card);
+
+        }
+    );
+
+}
+
+
+/* -------------------------------------------------
+   DETAIL
+------------------------------------------------- */
+
+function addDetail(
+    parent,
+    icon,
+    label,
+    value
+) {
+
+    const item =
+        document.createElement(
+            'div'
+        );
+
+
+    item.className =
+        'detail-item';
+
+
+    item.innerHTML = `
+
+        <span class="detail-icon">
+            ${icon}
+        </span>
+
+        <span>
+
+            <small>
+                ${label}
+            </small>
+
+            <strong>
+                ${escapeHtml(
+                    String(value)
+                )}
+            </strong>
+
+        </span>
+
+    `;
+
+
+    parent.appendChild(item);
+
+}
+
+
+/* -------------------------------------------------
+   BUTTON
+------------------------------------------------- */
+
+function createButton(
+    text,
+    className
+) {
+
+    const button =
+        document.createElement(
+            'button'
+        );
+
+
+    button.textContent =
+        text;
+
+
+    button.className =
+        `job-action-button ${className}`;
+
+
+    return button;
+
+}
+
+
+/* -------------------------------------------------
+   APPROVE / REJECT
+------------------------------------------------- */
+
+async function action(
+    id,
+    what
+) {
+
+    if (
+        what === 'approve'
+    ) {
+
+        const confirmed =
+            confirm(
+                `রিকোয়েস্ট #${id} approve করবেন?`
+            );
+
+
+        if (!confirmed) {
+            return;
+        }
+
+    }
+
+
+    const options = {
+
+        method: 'POST',
+
+        headers: {
+            'X-Admin-Token':
+                token()
+        }
+
+    };
+
+
+    if (
+        what === 'reject'
+    ) {
+
+        const reason =
+            prompt(
+                'Reject করার কারণ লিখুন:',
+                'Rejected'
+            );
+
+
+        if (
+            reason === null
+        ) {
+
+            return;
+
+        }
+
+
+        const formData =
+            new FormData();
+
+
+        formData.set(
+            'reason',
+            reason.trim() ||
+            'Rejected'
+        );
+
+
+        options.body =
+            formData;
+
+    }
+
+
+    showMessage(
+        'প্রসেস হচ্ছে...',
+        'loading'
+    );
+
+
+    try {
+
+        const response =
+            await fetch(
+                `/api/admin/requests/${id}/${what}`,
+                options
+            );
+
+
+        const data =
+            await response.json();
+
+
+        if (!response.ok) {
+
+            throw new Error(
+                data.detail ||
+                'Action সম্পন্ন করা যায়নি।'
+            );
+
+        }
+
+
+        showMessage(
+            `রিকোয়েস্ট #${id} সফলভাবে ${
+                what === 'approve'
+                    ? 'Approve'
+                    : 'Reject'
+            } হয়েছে।`,
+            'success'
+        );
+
+
+        await load();
+
+
+    } catch (error) {
+
+        showMessage(
+            'সমস্যা: ' +
+            error.message,
+            'error'
+        );
+
+    }
+
+}
+
+
+/* -------------------------------------------------
+   HTML ESCAPE
+------------------------------------------------- */
+
+function escapeHtml(
+    value
+) {
+
+    return String(value)
+
+        .replace(
+            /&/g,
+            '&amp;'
+        )
+
+        .replace(
+            /</g,
+            '&lt;'
+        )
+
+        .replace(
+            />/g,
+            '&gt;'
+        )
+
+        .replace(
+            /"/g,
+            '&quot;'
+        )
+
+        .replace(
+            /'/g,
+            '&#039;'
+        );
+
+}
+
+
+/* -------------------------------------------------
+   EVENTS
+------------------------------------------------- */
+
+loadButton.onclick =
+    load;
+
+
+refreshButton.onclick =
+    load;
+
+
+tokenInput.addEventListener(
+    'keydown',
+    function (event) {
+
+        if (
+            event.key === 'Enter'
+        ) {
+
+            load();
+
+        }
+
+    }
+);
+
+</script>
+
+</body>
+</html>
