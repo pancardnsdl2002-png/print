@@ -1,155 +1,112 @@
-import sqlite3
-import uuid
-import mimetypes
+import sqlite3, uuid, mimetypes
 from pathlib import Path
-
-from fastapi import (
-    FastAPI,
-    UploadFile,
-    File,
-    Form,
-    Header,
-    HTTPException,
-)
+from fastapi import FastAPI, UploadFile, File, Form, Header, HTTPException
 from fastapi.responses import HTMLResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
-
 from app.config import UPLOADS, DB, TOKEN, MAX_MB
 
-
-# =========================================================
-# APP CONFIGURATION
-# =========================================================
-
-app = FastAPI(title="Radhakrishna Printing Request System")
-
+app = FastAPI(title="Printing Request System")
 WEB = Path(__file__).resolve().parent.parent / "web"
-
-UPLOADS.mkdir(parents=True, exist_ok=True)
-DB.parent.mkdir(parents=True, exist_ok=True)
-
-if WEB.exists():
-    app.mount(
-        "/static",
-        StaticFiles(directory=WEB),
-        name="static",
-    )
-
-
-# =========================================================
-# DATABASE
-# =========================================================
+app.mount("/static", StaticFiles(directory=WEB), name="static")
 
 def connect():
-    connection = sqlite3.connect(DB)
-    connection.row_factory = sqlite3.Row
-    return connection
+    c = sqlite3.connect(DB); c.row_factory = sqlite3.Row
+    return c
 
+def init():
+    with connect() as c:
+        c.execute("CREATE TABLE IF NOT EXISTS jobs (id INTEGER PRIMARY KEY AUTOINCREMENT, original_name TEXT, stored_name TEXT, mime TEXT, pages INTEGER, duplex INTEGER, orientation TEXT, copies INTEGER, status TEXT DEFAULT 'pending', created_at TEXT DEFAULT CURRENT_TIMESTAMP, reason TEXT)")
+init()
 
-def column_exists(connection, table_name, column_name):
-    columns = connection.execute(
-        f"PRAGMA table_info({table_name})"
-    ).fetchall()
+def auth(token):
+    if token != TOKEN: raise HTTPException(401, "Invalid admin token")
 
-    return any(
-        column["name"] == column_name
-        for column in columns
-    )
+def clean(name):
+    p = (UPLOADS / Path(name).name).resolve()
+    if p.parent == UPLOADS.resolve() and p.exists(): p.unlink()
 
+@app.get("/", response_class=HTMLResponse)
+def home(): return (WEB / "index.html").read_text(encoding="utf-8")
 
-def init_database():
-    with connect() as connection:
+@app.get("/admin", response_class=HTMLResponse)
+def admin(): return (WEB / "admin.html").read_text(encoding="utf-8")
 
-        connection.execute(
-            """
-            CREATE TABLE IF NOT EXISTS jobs (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+@app.get("/health")
+def health(): return {"ok": True}
 
-                original_name TEXT,
-                stored_name TEXT,
-                mime TEXT,
+@app.post("/api/requests")
+async def submit(file: UploadFile = File(...), pages: int = Form(1), duplex: bool = Form(False), orientation: str = Form("portrait"), copies: int = Form(1)):
+    ext = Path(file.filename or "").suffix.lower()
+    if ext not in (".pdf", ".jpg", ".jpeg"): raise HTTPException(400, "Only PDF/JPG/JPEG allowed")
+    if pages not in (1,4,6) or orientation not in ("portrait","landscape") or not 1 <= copies <= 100: raise HTTPException(400, "Invalid print settings")
+    data = await file.read(MAX_MB*1024*1024+1)
+    if not data: raise HTTPException(400, "Empty file")
+    if len(data) > MAX_MB*1024*1024: raise HTTPException(413, "File too large")
+    stored = uuid.uuid4().hex + ext
+    (UPLOADS / stored).write_bytes(data)
+    with connect() as c:
+        cur = c.execute("INSERT INTO jobs(original_name,stored_name,mime,pages,duplex,orientation,copies) VALUES(?,?,?,?,?,?,?)",
+          (Path(file.filename or "document").name, stored, file.content_type or mimetypes.guess_type(ext)[0] or "application/octet-stream", pages, int(duplex), orientation, copies))
+        jid = cur.lastrowid
+    return {"id": jid, "status": "pending"}
 
-                pages INTEGER DEFAULT 1,
-                page_range TEXT DEFAULT '',
+@app.get("/api/requests/{jid}")
+def status(jid: int):
+    with connect() as c: row = c.execute("SELECT id,original_name,pages,duplex,orientation,copies,status,created_at,reason FROM jobs WHERE id=?", (jid,)).fetchone()
+    if not row: raise HTTPException(404, "Not found")
+    return dict(row)
 
-                duplex INTEGER DEFAULT 0,
+@app.get("/api/admin/requests")
+def requests(x_admin_token: str = Header(default="")):
+    auth(x_admin_token)
+    with connect() as c: rows = c.execute("SELECT id,original_name,pages,duplex,orientation,copies,status,created_at,reason FROM jobs ORDER BY id DESC").fetchall()
+    return [dict(r) for r in rows]
 
-                orientation TEXT DEFAULT 'portrait',
+@app.post("/api/admin/requests/{jid}/approve")
+def approve(jid: int, x_admin_token: str = Header(default="")):
+    auth(x_admin_token)
+    with connect() as c:
+        r = c.execute("SELECT status FROM jobs WHERE id=?", (jid,)).fetchone()
+        if not r: raise HTTPException(404, "Not found")
+        if r["status"] != "pending": raise HTTPException(409, "Not pending")
+        c.execute("UPDATE jobs SET status='approved' WHERE id=?", (jid,))
+    return {"id": jid, "status": "approved"}
 
-                copies INTEGER DEFAULT 1,
+@app.post("/api/admin/requests/{jid}/reject")
+def reject(jid: int, reason: str = Form("Rejected"), x_admin_token: str = Header(default="")):
+    auth(x_admin_token)
+    with connect() as c:
+        r = c.execute("SELECT stored_name,status FROM jobs WHERE id=?", (jid,)).fetchone()
+        if not r: raise HTTPException(404, "Not found")
+        if r["status"] not in ("pending","approved"): raise HTTPException(409, "Cannot reject")
+        c.execute("UPDATE jobs SET status='rejected',reason=? WHERE id=?", (reason[:500],jid))
+        stored = r["stored_name"]
+    clean(stored)
+    return {"id": jid, "status": "rejected", "file_deleted": True}
 
-                color_mode TEXT DEFAULT 'color',
+@app.get("/api/desktop/jobs")
+def desktop_jobs(x_admin_token: str = Header(default="")):
+    auth(x_admin_token)
+    with connect() as c: rows = c.execute("SELECT id,original_name,stored_name,mime,pages,duplex,orientation,copies FROM jobs WHERE status='approved' ORDER BY id").fetchall()
+    return [dict(r) for r in rows]
 
-                status TEXT DEFAULT 'pending',
+@app.get("/api/desktop/jobs/{jid}/file")
+def job_file(jid: int, x_admin_token: str = Header(default="")):
+    auth(x_admin_token)
+    with connect() as c: r = c.execute("SELECT stored_name,original_name,status FROM jobs WHERE id=?", (jid,)).fetchone()
+    if not r or r["status"] != "approved": raise HTTPException(404, "Approved job not found")
+    p = UPLOADS / r["stored_name"]
+    if not p.exists(): raise HTTPException(404, "File missing")
+    return FileResponse(p, filename=r["original_name"])
 
-                created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-
-                reason TEXT
-            )
-            """
-        )
-
-        # Add page_range to an old database if missing
-        if not column_exists(
-            connection,
-            "jobs",
-            "page_range",
-        ):
-            connection.execute(
-                """
-                ALTER TABLE jobs
-                ADD COLUMN page_range TEXT DEFAULT ''
-                """
-            )
-
-        # Add color_mode to an old database if missing
-        if not column_exists(
-            connection,
-            "jobs",
-            "color_mode",
-        ):
-            connection.execute(
-                """
-                ALTER TABLE jobs
-                ADD COLUMN color_mode TEXT DEFAULT 'color'
-                """
-            )
-
-        connection.commit()
-
-
-init_database()
-
-
-# =========================================================
-# HELPERS
-# =========================================================
-
-def auth(token: str):
-    if not token or token != TOKEN:
-        raise HTTPException(
-            status_code=401,
-            detail="Invalid admin token",
-        )
-
-
-def clean(stored_name):
-    if not stored_name:
-        return
-
-    file_path = (
-        UPLOADS / Path(stored_name).name
-    ).resolve()
-
-    if file_path.parent == UPLOADS.resolve():
-        if file_path.exists():
-            file_path.unlink()
-
-
-def validate_settings(
-    pages,
-    page_range,
-    duplex,
-    orientation,
-    copies,
-   
+@app.post("/api/desktop/jobs/{jid}/complete")
+def complete(jid: int, x_admin_token: str = Header(default="")):
+    auth(x_admin_token)
+    with connect() as c:
+        r = c.execute("SELECT stored_name,status FROM jobs WHERE id=?", (jid,)).fetchone()
+        if not r: raise HTTPException(404, "Not found")
+        if r["status"] != "approved": raise HTTPException(409, "Not approved")
+        c.execute("UPDATE jobs SET status='completed' WHERE id=?", (jid,))
+        stored = r["stored_name"]
+    clean(stored)
+    return {"id": jid, "status": "completed", "file_deleted": True}
